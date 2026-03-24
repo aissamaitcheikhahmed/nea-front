@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 560" width="1560" height="560">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c9a84c"/>
+      <stop offset="100%" stop-color="#8a6820"/>
+    </linearGradient>
+    <linearGradient id="lL" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a07828" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#a07828" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="lR" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a07828" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#a07828" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- NO BACKGROUND — fully transparent -->
+
+  <!-- CORNER BRACKETS -->
+  <!-- Top left -->
+  <path d="M40 30 L40 75 M40 30 L85 30" fill="none" stroke="#b8922a" stroke-width="1.5" opacity="0.7"/>
+  <!-- Top right -->
+  <path d="M1520 30 L1520 75 M1520 30 L1475 30" fill="none" stroke="#b8922a" stroke-width="1.5" opacity="0.7"/>
+  <!-- Bottom left -->
+  <path d="M40 530 L40 485 M40 530 L85 530" fill="none" stroke="#b8922a" stroke-width="1.5" opacity="0.7"/>
+  <!-- Bottom right -->
+  <path d="M1520 530 L1520 485 M1520 530 L1475 530" fill="none" stroke="#b8922a" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- OUTER BORDER LINE -->
+  <rect x="28" y="18" width="1504" height="524" fill="none" stroke="#b8922a" stroke-width="0.6" opacity="0.25"/>
+
+  <!-- ══ ICON — left side ══ -->
+  <!-- Outer ring -->
+  <circle cx="230" cy="280" r="100" fill="none" stroke="#b8922a" stroke-width="0.9" opacity="0.5"/>
+  <!-- Inner ring -->
+  <circle cx="230" cy="280" r="62" fill="none" stroke="#b8922a" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- 4 cardinal dots -->
+  <circle cx="230" cy="181" r="3.5" fill="#b8922a" opacity="0.7"/>
+  <circle cx="230" cy="379" r="3.5" fill="#b8922a" opacity="0.7"/>
+  <circle cx="131" cy="280" r="3.5" fill="#b8922a" opacity="0.7"/>
+  <circle cx="329" cy="280" r="3.5" fill="#b8922a" opacity="0.7"/>
+
+  <!-- 4 petal arches -->
+  <!-- Top -->
+  <path d="M230 196 C213 196 199 210 199 229 C199 245 213 256 230 256 C247 256 261 245 261 229 C261 210 247 196 230 196Z"
+        fill="none" stroke="#b8922a" stroke-width="1.1" opacity="0.65"/>
+  <!-- Bottom -->
+  <path d="M230 364 C213 364 199 350 199 331 C199 315 213 304 230 304 C247 304 261 315 261 331 C261 350 247 364 230 364Z"
+        fill="none" stroke="#b8922a" stroke-width="1.1" opacity="0.65"/>
+  <!-- Left -->
+  <path d="M146 280 C146 263 160 249 179 249 C195 249 206 263 206 280 C206 297 195 311 179 311 C160 311 146 297 146 280Z"
+        fill="none" stroke="#b8922a" stroke-width="1.1" opacity="0.65"/>
+  <!-- Right -->
+  <path d="M314 280 C314 263 300 249 281 249 C265 249 254 263 254 280 C254 297 265 311 281 311 C300 311 314 297 314 280Z"
+        fill="none" stroke="#b8922a" stroke-width="1.1" opacity="0.65"/>
+
+  <!-- Center gem -->
+  <circle cx="230" cy="280" r="14" fill="none" stroke="#b8922a" stroke-width="0.9" opacity="0.8"/>
+  <circle cx="230" cy="280" r="9"  fill="#b8922a" opacity="0.9"/>
+  <circle cx="230" cy="280" r="3.5" fill="none" stroke="#f8f4ec" stroke-width="1" opacity="0.8"/>
+
+  <!-- VERTICAL DIVIDER LINE -->
+  <line x1="420" y1="180" x2="420" y2="380"
+        stroke="#b8922a" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- ══ WORDMARK ══ -->
+  <!-- NEA — italic gold -->
+  <text x="530" y="310"
+        font-family="'Cormorant Garamond', 'Palatino Linotype', 'Book Antiqua', Georgia, serif"
+        font-size="160"
+        font-style="italic"
+        font-weight="400"
+        fill="#8a6820"
+        letter-spacing="8">NEA</text>
+
+  <!-- EVENTS — upright dark -->
+  <text x="870" y="310"
+        font-family="'Cormorant Garamond', 'Palatino Linotype', 'Book Antiqua', Georgia, serif"
+        font-size="160"
+        font-style="normal"
+        font-weight="300"
+        fill="#2a1f0e"
+        letter-spacing="18">EVENTS</text>
+
+  <!-- TAGLINE — centered under NEA EVENTS -->
+  <text x="1010" y="370"
+        font-family="'Didact Gothic', 'Gill Sans', 'Arial Narrow', Arial, sans-serif"
+        font-size="22"
+        font-weight="400"
+        fill="#8a6820"
+        text-anchor="middle"
+        letter-spacing="8"
+        opacity="0.8">DECORATION &amp; EVENT DESIGN</text>
+
+</svg>

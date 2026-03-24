@@ -1,9 +1,10 @@
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { ShoppingCart } from 'lucide-react';
+import WeddingChrome from '../components/WeddingChrome';
+import WeddingPageHeader from '../components/WeddingPageHeader';
+import car3 from '../../assets/car3.webp';
 
 export default function ProductListPage() {
   const { t } = useLanguage();
@@ -11,42 +12,46 @@ export default function ProductListPage() {
   const { products } = useProducts();
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1 pt-20 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h1 className="text-3xl md:text-4xl font-bold text-[#537D96] mb-4">
-              {t.products.title}
-            </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              {t.products.subtitle}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-2 duration-300"
-              >
-                <div className="relative h-56 overflow-hidden">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-                  />
-                </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {product.description}
-                  </p>
-                  <p className="text-[#44A194] font-semibold mb-4">
-                    {t.products.from} €{product.price.toFixed(2)}
-                  </p>
+    <WeddingChrome activeNav="catalog" showCart>
+      <WeddingPageHeader bg={car3} tag="Catalogus" title="Onze" titleEm="Producten" />
+      <section className="shop-sec">
+        <div className="sec-tag reveal visible">
+          <div className="sec-tag-line" />
+          <span className="sec-tag-text">Webshop</span>
+        </div>
+        <h2 className="sec-h reveal visible d1">{t.products.title}</h2>
+        <p
+          className="reveal visible d2"
+          style={{
+            fontFamily: 'var(--sans)',
+            fontSize: 14,
+            fontWeight: 300,
+            color: 'var(--muted)',
+            lineHeight: 1.75,
+            maxWidth: 640,
+            marginTop: 16,
+          }}
+        >
+          {t.products.subtitle}
+        </p>
+
+        <div className="shop-grid" style={{ marginTop: 48 }}>
+          {products.map((product) => (
+            <div key={product.id} className="shop-card">
+              <div className="shop-img-wrap">
+                <img className="shop-img" src={product.image} alt={product.name} />
+              </div>
+              <div className="shop-body">
+                <div className="shop-cat">Product</div>
+                <div className="shop-name">{product.name}</div>
+                <p className="shop-desc">{product.description}</p>
+                <div className="shop-footer">
+                  <div className="shop-price">
+                    €{product.price.toFixed(2)} <span>({t.products.from})</span>
+                  </div>
                   <button
+                    type="button"
+                    className="shop-btn"
                     onClick={() =>
                       addItem({
                         id: product.id,
@@ -55,18 +60,16 @@ export default function ProductListPage() {
                         price: product.price,
                       })
                     }
-                    className="w-full flex items-center justify-center gap-2 bg-[#44A194] text-white px-4 py-2.5 rounded-full text-sm hover:bg-[#3a8a7d] transition-colors"
                   >
-                    <ShoppingCart size={18} />
+                    <ShoppingCart size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
                     {t.products.addToCart}
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      </main>
-      <Footer />
-    </div>
+      </section>
+    </WeddingChrome>
   );
 }
