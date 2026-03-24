@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useLanguage } from '../context/LanguageContext';
+import type { Locale } from '../i18n/translations';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { totalItems, toggleCart } = useCart();
+  const { t, locale, setLocale } = useLanguage();
   const location = useLocation();
   const isHome = location.pathname === '/';
 
@@ -49,20 +52,35 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
-            {navLink('Home', '/', 'home')}
-            {navLink('Aanbod', '/', 'aanbod')}
-            {navLink('Nieuw', '/', 'nieuw')}
-            {navLink('Inspiratie', '/', 'inspiratie')}
+            {navLink(t.nav.home, '/', 'home')}
+            {navLink(t.nav.aanbod, '/', 'aanbod')}
+            {navLink(t.nav.nieuw, '/', 'nieuw')}
+            {navLink(t.nav.inspiratie, '/', 'inspiratie')}
             <Link
               to="/producten"
               className="text-gray-700 hover:text-[#1f3d54] transition-colors"
             >
-              Producten
+              {t.nav.products}
             </Link>
+            <div className="flex items-center rounded-full border border-gray-200 p-0.5 text-sm font-semibold">
+              {(['nl', 'fr'] as const satisfies readonly Locale[]).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLocale(code)}
+                  className={`rounded-full px-2.5 py-1 transition-colors ${
+                    locale === code ? 'bg-[#1f3d54] text-white' : 'text-gray-600 hover:text-[#1f3d54]'
+                  }`}
+                  aria-pressed={locale === code}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <button
               onClick={toggleCart}
               className="relative p-2 text-gray-700 hover:text-[#1f3d54] transition-colors"
-              aria-label="Winkelwagen"
+              aria-label={t.nav.cartAria}
             >
               <ShoppingCart size={24} />
               {totalItems > 0 && (
@@ -76,14 +94,14 @@ export default function Navbar() {
                 onClick={() => scrollToSection('aanbod')}
                 className="bg-[#1f3d54] text-white px-6 py-2 rounded-full hover:bg-[#173042] transition-colors"
               >
-                Offerte aanvragen
+                {t.nav.quoteRequest}
               </button>
             ) : (
               <Link
                 to="/"
                 className="bg-[#1f3d54] text-white px-6 py-2 rounded-full hover:bg-[#173042] transition-colors"
               >
-                Offerte aanvragen
+                {t.nav.quoteRequest}
               </Link>
             )}
           </div>
@@ -92,7 +110,7 @@ export default function Navbar() {
             <button
               onClick={toggleCart}
               className="relative p-2 text-gray-700 hover:text-[#1f3d54]"
-              aria-label="Winkelwagen"
+              aria-label={t.nav.cartAria}
             >
               <ShoppingCart size={22} />
               {totalItems > 0 && (
@@ -114,27 +132,43 @@ export default function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-200">
           <div className="px-4 pt-2 pb-4 space-y-2">
-            {navLink('Home', '/', 'home')}
+            {navLink(t.nav.home, '/', 'home')}
             <div className="block w-full text-left py-2">
-              {navLink('Aanbod', '/', 'aanbod')}
+              {navLink(t.nav.aanbod, '/', 'aanbod')}
             </div>
             <div className="block w-full text-left py-2">
-              {navLink('Nieuw', '/', 'nieuw')}
+              {navLink(t.nav.nieuw, '/', 'nieuw')}
             </div>
-            <div className="block w-full text-left py-2">{navLink('Inspiratie', '/', 'inspiratie')}</div>
+            <div className="block w-full text-left py-2">{navLink(t.nav.inspiratie, '/', 'inspiratie')}</div>
             <Link
               to="/producten"
               onClick={() => setIsMenuOpen(false)}
               className="block py-2 text-gray-700 hover:text-[#1f3d54]"
             >
-              Producten
+              {t.nav.products}
             </Link>
+            <div className="flex gap-2 py-2">
+              {(['nl', 'fr'] as const satisfies readonly Locale[]).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLocale(code)}
+                  className={`rounded-full px-3 py-1 text-sm font-semibold border ${
+                    locale === code
+                      ? 'border-[#1f3d54] bg-[#1f3d54] text-white'
+                      : 'border-gray-200 text-gray-600'
+                  }`}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <Link
               to="/"
               onClick={() => setIsMenuOpen(false)}
               className="w-full mt-2 inline-block text-center bg-[#1f3d54] text-white px-6 py-2 rounded-full hover:bg-[#173042] transition-colors"
             >
-              Offerte aanvragen
+              {t.nav.quoteRequest}
             </Link>
           </div>
         </div>
