@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Cake,
   Church,
@@ -12,7 +12,9 @@ import {
   Clock,
   CircleDot,
   Sparkles,
+  ShoppingCart,
 } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 import car2 from '../../assets/car2.webp';
 import car3 from '../../assets/car3.webp';
 import car4 from '../../assets/car4.webp';
@@ -24,7 +26,7 @@ import ins2 from '../../assets/Inspiratie/ins (2).webp';
 import ins3 from '../../assets/Inspiratie/ins (3).webp';
 import ins4 from '../../assets/Inspiratie/ins (4).webp';
 import '../styles/neaevents-wedding-scoped.css';
-import weddingLogo from '../assets/nea-events-horizontal-transparent.svg';
+import weddingLogo from '../assets/logo.png';
 import WeddingFooter from './WeddingFooter';
 import WeddingPageHeader from './WeddingPageHeader';
 import type { WeddingPage } from '../wedding/types';
@@ -53,6 +55,7 @@ const COLLECTIES = [
 const GAL_IMGS = [ins1, ins2, ins3, ins4, car2, car3, assort1, assort2, assort3, car4, ins1, ins3];
 
 const SHOP_ITEMS: {
+  id: string;
   cat: Exclude<ShopCat, 'all'>;
   img: string;
   badge?: string;
@@ -60,8 +63,10 @@ const SHOP_ITEMS: {
   name: string;
   desc: string;
   price: string;
+  priceEur: number;
 }[] = [
   {
+    id: 'wit-goud-diner-bord',
     cat: 'borden',
     img: assort1,
     badge: 'Populair',
@@ -69,24 +74,30 @@ const SHOP_ITEMS: {
     name: 'Wit & Goud Diner Bord',
     desc: 'Wit porseleinen bord met gouden rand. Ø 27cm. Per 6 stuks.',
     price: '€3,50',
+    priceEur: 3.5,
   },
   {
+    id: 'marokkaans-keramisch-bord',
     cat: 'borden',
     img: assort2,
     shopCat: 'Borden',
     name: 'Marokkaans Keramisch Bord',
     desc: 'Handbeschilderd keramisch bord in mauve. Ø 28cm. Per 6 stuks.',
     price: '€4,50',
+    priceEur: 4.5,
   },
   {
+    id: 'klassiek-relief-bord',
     cat: 'borden',
     img: assort3,
     shopCat: 'Borden',
     name: 'Klassiek Reliëf Bord',
     desc: 'Wit porseleinen bord met fijn reliëfpatroon. Ø 26cm. Per 6 stuks.',
     price: '€3,00',
+    priceEur: 3,
   },
   {
+    id: 'amber-kristal-wijnglas',
     cat: 'glazen',
     img: ins1,
     badge: 'Nieuw',
@@ -94,53 +105,57 @@ const SHOP_ITEMS: {
     name: 'Amber Kristal Wijnglas',
     desc: 'Facetgeslepen kristalglas in amber. H 18cm. Per 6 stuks.',
     price: '€2,50',
+    priceEur: 2.5,
   },
   {
+    id: 'mauve-kristal-wijnglas',
     cat: 'glazen',
     img: ins2,
     shopCat: 'Glazen',
     name: 'Mauve Kristal Wijnglas',
     desc: 'Facetgeslepen kristalglas in mauve-paars. H 18cm. Per 6 stuks.',
     price: '€2,50',
+    priceEur: 2.5,
   },
   {
+    id: 'kristal-longdrinkglas',
     cat: 'glazen',
     img: ins3,
     shopCat: 'Glazen',
     name: 'Kristal Longdrinkglas',
     desc: 'Helder facetgeslepen longdrinkglas. H 15cm. Per 6 stuks.',
     price: '€2,00',
+    priceEur: 2,
   },
   {
+    id: 'rozenarrangement-klein',
     cat: 'bloemen',
     img: ins4,
     shopCat: 'Bloemen & Vazen',
     name: 'Rozenarrangement klein',
     desc: 'Seizoensrozen met groen, vaas inbegrepen.',
     price: '€45',
+    priceEur: 45,
   },
   {
+    id: 'linnen-servet-set',
     cat: 'linnen',
     img: car3,
     shopCat: 'Linnen',
     name: 'Linnen servet set',
     desc: 'Zacht linnen, per 12 stuks, diverse tinten.',
     price: '€1,20',
+    priceEur: 1.2,
   },
 ];
 
 export default function NeaeventsWeddingSite() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { addItem, toggleCart, totalItems, openCart } = useCart();
   const [page, setPage] = useState<WeddingPage>('home');
   const [shopFilter, setShopFilter] = useState<ShopCat>('all');
   const rootRef = useRef<HTMLDivElement>(null);
-  const dotRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-  const mx = useRef(0);
-  const my = useRef(0);
-  const rx = useRef(0);
-  const ry = useRef(0);
 
   const showPage = useCallback((id: WeddingPage) => {
     setPage(id);
@@ -154,57 +169,6 @@ export default function NeaeventsWeddingSite() {
       navigate('.', { replace: true, state: {} });
     }
   }, [location.state, navigate]);
-
-  useEffect(() => {
-    const dot = dotRef.current;
-    const ring = ringRef.current;
-    if (!dot || !ring) return;
-
-    const onMove = (e: MouseEvent) => {
-      mx.current = e.clientX;
-      my.current = e.clientY;
-      dot.style.left = `${mx.current}px`;
-      dot.style.top = `${my.current}px`;
-    };
-
-    let frame = 0;
-    const loop = () => {
-      rx.current += (mx.current - rx.current) * 0.12;
-      ry.current += (my.current - ry.current) * 0.12;
-      ring.style.left = `${rx.current}px`;
-      ring.style.top = `${ry.current}px`;
-      frame = requestAnimationFrame(loop);
-    };
-
-    window.addEventListener('mousemove', onMove);
-    frame = requestAnimationFrame(loop);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      cancelAnimationFrame(frame);
-    };
-  }, []);
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-
-    const onEnter = () => document.body.classList.add('hov');
-    const onLeave = () => document.body.classList.remove('hov');
-    const sel =
-      'a,button,.nav-card,.col-card,.masonry-item,.shop-card,.about-img-item,.strip-item,.filter-btn,.form-submit';
-    const nodes = root.querySelectorAll(sel);
-    nodes.forEach((el) => {
-      el.addEventListener('mouseenter', onEnter);
-      el.addEventListener('mouseleave', onLeave);
-    });
-    return () => {
-      nodes.forEach((el) => {
-        el.removeEventListener('mouseenter', onEnter);
-        el.removeEventListener('mouseleave', onLeave);
-      });
-      document.body.classList.remove('hov');
-    };
-  }, [page]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -252,11 +216,6 @@ export default function NeaeventsWeddingSite() {
 
   return (
     <div className="nea-wedding-root" ref={rootRef}>
-      <div id="cur">
-        <div id="cur-dot" ref={dotRef} />
-        <div id="cur-ring" ref={ringRef} />
-      </div>
-
       <nav>
         <a
           href="#"
@@ -276,13 +235,26 @@ export default function NeaeventsWeddingSite() {
           {navLink('winkel', 'Winkel')}
           {navLink('about', 'Over Ons')}
           {navLink('contact', 'Contact')}
-          <li>
-            <Link to="/producten">Catalogus</Link>
-          </li>
         </ul>
-        <button type="button" className="nav-cta" onClick={() => showPage('contact')}>
-          Offerte Aanvragen
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {page === 'winkel' || totalItems > 0 ? (
+            <button
+              type="button"
+              className="nav-cta"
+              style={{ padding: '10px 14px' }}
+              onClick={toggleCart}
+              aria-label="Winkelwagen"
+            >
+              <ShoppingCart size={18} strokeWidth={1.5} />
+              {totalItems > 0 ? (
+                <span style={{ marginLeft: 6, fontSize: 10, letterSpacing: '0.12em' }}>{totalItems}</span>
+              ) : null}
+            </button>
+          ) : null}
+          <button type="button" className="nav-cta" onClick={() => showPage('contact')}>
+            Offerte Aanvragen
+          </button>
+        </div>
       </nav>
 
       <div className={`page${page === 'home' ? ' active' : ''}`} id="page-home">
@@ -534,14 +506,9 @@ export default function NeaeventsWeddingSite() {
               </button>
             ))}
           </div>
-          <p className="reveal d2" style={{ marginBottom: 16 }}>
-            <Link to="/producten" style={{ color: 'var(--rose-dk)', fontFamily: 'var(--sans)', fontSize: 13 }}>
-              → Volledige productcatalogus (webshop)
-            </Link>
-          </p>
           <div className="shop-grid">
             {SHOP_ITEMS.filter((p) => shopFilter === 'all' || p.cat === shopFilter).map((p) => (
-              <div key={p.name} className="shop-card" data-cat={p.cat}>
+              <div key={p.id} className="shop-card" data-cat={p.cat}>
                 <div className="shop-img-wrap">
                   <img className="shop-img" src={p.img} alt="" />
                   {p.badge ? <div className="shop-badge">{p.badge}</div> : null}
@@ -554,9 +521,22 @@ export default function NeaeventsWeddingSite() {
                     <div className="shop-price">
                       {p.price} <span>/ stuk / dag</span>
                     </div>
-                    <Link to="/producten" className="shop-btn" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                      Bestellen
-                    </Link>
+                    <button
+                      type="button"
+                      className="shop-btn"
+                      onClick={() => {
+                        addItem({
+                          id: p.id,
+                          name: p.name,
+                          image: p.img,
+                          price: p.priceEur,
+                        });
+                        openCart();
+                      }}
+                    >
+                      <ShoppingCart size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+                      In winkelwagen
+                    </button>
                   </div>
                 </div>
               </div>
@@ -781,7 +761,7 @@ export default function NeaeventsWeddingSite() {
               <div>
                 <div className="contact-detail-label">E-mail</div>
                 <div className="contact-detail-text">
-                  <a href="mailto:hello@neaevents.be">hello@neaevents.be</a>
+                  <a href="mailto:info@neaevents.be">info@neaevents.be</a>
                 </div>
               </div>
             </div>

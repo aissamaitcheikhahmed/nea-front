@@ -1,20 +1,20 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import type { WeddingPage } from '../wedding/types';
 import WeddingFooter from './WeddingFooter';
-import weddingLogo from '../assets/nea-events-horizontal-transparent.svg';
+import weddingLogo from '../assets/logo.png';
 import '../styles/neaevents-wedding-scoped.css';
 
-export type WeddingChromeNav = 'home' | 'catalog' | WeddingPage;
+export type WeddingChromeNav = 'home' | WeddingPage;
 
 type Props = {
   children: ReactNode;
   /** Which nav item shows the gold underline */
   activeNav: WeddingChromeNav;
   showFooter?: boolean;
-  /** Show cart icon (e.g. on /producten) */
+  /** Show cart icon in the nav */
   showCart?: boolean;
 };
 
@@ -37,73 +37,10 @@ function NavLinkRouter({
 }
 
 export default function WeddingChrome({ children, activeNav, showFooter = true, showCart = false }: Props) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const dotRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-  const mx = useRef(0);
-  const my = useRef(0);
-  const rx = useRef(0);
-  const ry = useRef(0);
   const { totalItems, toggleCart } = useCart();
 
-  useEffect(() => {
-    const dot = dotRef.current;
-    const ring = ringRef.current;
-    if (!dot || !ring) return;
-
-    const onMove = (e: MouseEvent) => {
-      mx.current = e.clientX;
-      my.current = e.clientY;
-      dot.style.left = `${mx.current}px`;
-      dot.style.top = `${my.current}px`;
-    };
-
-    let frame = 0;
-    const loop = () => {
-      rx.current += (mx.current - rx.current) * 0.12;
-      ry.current += (my.current - ry.current) * 0.12;
-      ring.style.left = `${rx.current}px`;
-      ring.style.top = `${ry.current}px`;
-      frame = requestAnimationFrame(loop);
-    };
-
-    window.addEventListener('mousemove', onMove);
-    frame = requestAnimationFrame(loop);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      cancelAnimationFrame(frame);
-    };
-  }, []);
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-
-    const onEnter = () => document.body.classList.add('hov');
-    const onLeave = () => document.body.classList.remove('hov');
-    const sel =
-      'a,button,.nav-card,.col-card,.masonry-item,.shop-card,.about-img-item,.strip-item,.filter-btn,.form-submit,.shop-btn';
-    const nodes = root.querySelectorAll(sel);
-    nodes.forEach((el) => {
-      el.addEventListener('mouseenter', onEnter);
-      el.addEventListener('mouseleave', onLeave);
-    });
-    return () => {
-      nodes.forEach((el) => {
-        el.removeEventListener('mouseenter', onEnter);
-        el.removeEventListener('mouseleave', onLeave);
-      });
-      document.body.classList.remove('hov');
-    };
-  }, []);
-
   return (
-    <div className="nea-wedding-root" ref={rootRef}>
-      <div id="cur">
-        <div id="cur-dot" ref={dotRef} />
-        <div id="cur-ring" ref={ringRef} />
-      </div>
-
+    <div className="nea-wedding-root">
       <nav>
         <Link to="/" className="nav-logo" aria-label="neaevents — home">
           <img src={weddingLogo} alt="" className="nav-logo-img" width={260} height={93} decoding="async" />
@@ -129,11 +66,6 @@ export default function WeddingChrome({ children, activeNav, showFooter = true, 
           <NavLinkRouter page="contact" active={activeNav === 'contact'}>
             Contact
           </NavLinkRouter>
-          <li>
-            <Link to="/producten" className={activeNav === 'catalog' ? 'active-link' : undefined}>
-              Catalogus
-            </Link>
-          </li>
         </ul>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {showCart ? (

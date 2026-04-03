@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { WeddingPage } from '../wedding/types';
-import weddingLogo from '../assets/nea-events-horizontal-transparent.svg';
+import footerLogo from '../assets/logo2.png';
 
 type Props =
   | { mode: 'spa'; onNavigate: (page: WeddingPage) => void }
@@ -28,14 +28,14 @@ export default function WeddingFooter(props: Props) {
     <footer>
       <div className="ft-top">
         <div>
-          <img src={weddingLogo} alt="neaevents" className="ft-logo-img" width={200} height={72} decoding="async" />
+          <img src={footerLogo} alt="neaevents" className="ft-logo-img" width={200} height={72} decoding="async" />
           <div className="ft-sub">Bruiloft & Evenement Decoratie</div>
           <div className="ft-contact">
             Brussel, België
             <br />
             +32 470 00 00 00
             <br />
-            <a href="mailto:hello@neaevents.be">hello@neaevents.be</a>
+            <a href="mailto:info@neaevents.be">info@neaevents.be</a>
           </div>
         </div>
         <div>

@@ -57,7 +57,8 @@ export default function Navbar() {
             {navLink(t.nav.nieuw, '/', 'nieuw')}
             {navLink(t.nav.inspiratie, '/', 'inspiratie')}
             <Link
-              to="/producten"
+              to="/"
+              state={{ weddingPage: 'winkel' }}
               className="text-gray-700 hover:text-[#1f3d54] transition-colors"
             >
               {t.nav.products}
@@ -141,7 +142,8 @@ export default function Navbar() {
             </div>
             <div className="block w-full text-left py-2">{navLink(t.nav.inspiratie, '/', 'inspiratie')}</div>
             <Link
-              to="/producten"
+              to="/"
+              state={{ weddingPage: 'winkel' }}
               onClick={() => setIsMenuOpen(false)}
               className="block py-2 text-gray-700 hover:text-[#1f3d54]"
             >
