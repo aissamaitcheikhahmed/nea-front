@@ -1,23 +1,12 @@
 /**
  * Vercel Serverless: GET /api/products | POST /api/products
  *
- * POST: multipart/form-data (use FormData in the browser — never JSON for file uploads)
- *   Fields: name, description, price, category, image (file)
+ * POST (JSON): { name, description, price, category, image } — image is HTTPS URL from client Blob upload.
  *   Header: Authorization: Bearer <ADMIN_API_SECRET>
- *
- * Env (Vercel Project Settings):
- *   MONGODB_URI
- *   MONGODB_DB (optional, default neaevents)
- *   MONGODB_PRODUCTS_COLLECTION (optional, default products)
- *   BLOB_READ_WRITE_TOKEN — from Vercel Blob store
- *   ADMIN_API_SECRET — same value as VITE_ADMIN_API_SECRET in the frontend build
+ *   (Large files use /api/blob-upload + @vercel/blob/client upload() first — see AdminPanel.)
  */
 
-import { readFile, unlink } from 'fs/promises';
-import path from 'path';
 import { MongoClient } from 'mongodb';
-import formidable from 'formidable';
-import { put } from '@vercel/blob';
 
 const SHOP_CATEGORY_SLUGS = [
   'borden',
@@ -41,14 +30,6 @@ const categories = SHOP_CATEGORY_SLUGS.map((slug) => ({
   slug,
   label: CATEGORY_LABELS[slug] ?? slug,
 }));
-
-const ALLOWED_IMAGE_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-]);
 
 let cachedClient;
 
@@ -74,11 +55,6 @@ function mapDoc(doc) {
   };
 }
 
-function first(val) {
-  if (val == null) return '';
-  return Array.isArray(val) ? val[0] : val;
-}
-
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -89,6 +65,26 @@ function unauthorized(res) {
   res.statusCode = 401;
   res.setHeader('Content-Type', 'application/json');
   res.end(JSON.stringify({ error: 'Unauthorized' }));
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+function isAllowedImageUrl(url) {
+  if (typeof url !== 'string' || url.length > 2048) return false;
+  if (!url.startsWith('https://')) return false;
+  try {
+    const u = new URL(url);
+    return u.hostname.endsWith('.blob.vercel-storage.com') || u.hostname.endsWith('.public.blob.vercel-storage.com');
+  } catch {
+    return false;
+  }
 }
 
 async function handleGet(req, res) {
@@ -106,7 +102,7 @@ async function handleGet(req, res) {
         meta: {
           source: 'unconfigured',
           message:
-            'Set MONGODB_URI in Vercel env. POST also needs BLOB_READ_WRITE_TOKEN and ADMIN_API_SECRET.',
+            'Set MONGODB_URI in Vercel env. POST needs ADMIN_API_SECRET; images use client upload to Blob.',
         },
       })
     );
@@ -143,39 +139,32 @@ async function handlePost(req, res) {
     return unauthorized(res);
   }
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    res.statusCode = 500;
-    return res.end(JSON.stringify({ error: 'BLOB_READ_WRITE_TOKEN is not set' }));
-  }
-
   const mongoClient = await getMongoClient();
   if (!mongoClient) {
     res.statusCode = 500;
-    return res.end(JSON.stringify({ error: 'MONGODB_URI is not set' }));
+    return res.end(
+      JSON.stringify({
+        error: 'MONGODB_URI is not set',
+        hint:
+          'Add MONGODB_URI in Vercel → Project → Settings → Environment Variables (Production + Preview), then Redeploy.',
+      })
+    );
   }
 
-  // Stay under Vercel serverless request body limit (~4.5 MB on Hobby).
-  const form = formidable({
-    maxFileSize: Math.floor(4.5 * 1024 * 1024),
-    allowEmptyFiles: false,
-  });
-
-  let fields;
-  let files;
+  let data;
   try {
-    [fields, files] = await form.parse(req);
+    const raw = await readBody(req);
+    data = JSON.parse(raw);
   } catch (e) {
-    console.error('[api/products] parse', e);
     res.statusCode = 400;
-    return res.end(JSON.stringify({ error: 'Invalid multipart form', message: String(e.message) }));
+    return res.end(JSON.stringify({ error: 'Invalid JSON body', message: String(e.message) }));
   }
 
-  const name = String(first(fields.name) ?? '').trim();
-  const description = String(first(fields.description) ?? '').trim();
-  const priceRaw = first(fields.price);
-  const category = String(first(fields.category) ?? '').trim();
-
-  const price = typeof priceRaw === 'string' || typeof priceRaw === 'number' ? Number(priceRaw) : NaN;
+  const name = String(data.name ?? '').trim();
+  const description = String(data.description ?? '').trim();
+  const price = Number(data.price);
+  const category = String(data.category ?? '').trim();
+  const imageUrl = String(data.image ?? '').trim();
 
   if (!name || !description || !Number.isFinite(price) || price < 0) {
     res.statusCode = 400;
@@ -187,46 +176,14 @@ async function handlePost(req, res) {
     return res.end(JSON.stringify({ error: 'Invalid category', allowed: SHOP_CATEGORY_SLUGS }));
   }
 
-  const imageField = files.image;
-  const file = Array.isArray(imageField) ? imageField[0] : imageField;
-  if (!file || !file.filepath) {
+  if (!isAllowedImageUrl(imageUrl)) {
     res.statusCode = 400;
-    return res.end(JSON.stringify({ error: 'Image file is required (field name: image)' }));
-  }
-
-  if (!ALLOWED_IMAGE_TYPES.has(file.mimetype || '')) {
-    res.statusCode = 400;
-    return res.end(JSON.stringify({ error: 'Only JPEG, PNG, WebP, or GIF images are allowed' }));
-  }
-
-  const ext = path.extname(file.originalFilename || '') || '.jpg';
-  const safeExt = ext.length <= 8 ? ext : '.jpg';
-  const pathname = `products/${Date.now()}${safeExt}`;
-
-  let buffer;
-  try {
-    buffer = await readFile(file.filepath);
-  } finally {
-    try {
-      await unlink(file.filepath);
-    } catch {
-      /* temp file may already be removed */
-    }
-  }
-
-  let imageUrl;
-  try {
-    const blob = await put(pathname, buffer, {
-      access: 'public',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      contentType: file.mimetype || 'image/jpeg',
-      addRandomSuffix: true,
-    });
-    imageUrl = blob.url;
-  } catch (e) {
-    console.error('[api/products] blob put', e);
-    res.statusCode = 500;
-    return res.end(JSON.stringify({ error: 'Blob upload failed', message: String(e.message) }));
+    return res.end(
+      JSON.stringify({
+        error: 'Invalid image URL',
+        hint: 'Must be an https:// URL on *.blob.vercel-storage.com (from client Blob upload).',
+      })
+    );
   }
 
   const dbName = process.env.MONGODB_DB || 'neaevents';

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { upload } from '@vercel/blob/client';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
 const SHOP_CATEGORIES: { slug: string; label: string }[] = [
@@ -41,29 +42,43 @@ export default function AdminPanelPage() {
       return;
     }
 
-    const fd = new FormData();
-    fd.append('name', name.trim());
-    fd.append('description', description.trim());
-    fd.append('price', price);
-    fd.append('category', category);
-    fd.append('image', file);
-
     const apiOrigin = import.meta.env.VITE_API_ORIGIN?.trim().replace(/\/$/, '') ?? '';
+    const blobUploadUrl = apiOrigin ? `${apiOrigin}/api/blob-upload` : '/api/blob-upload';
     const productsUrl = apiOrigin ? `${apiOrigin}/api/products` : '/api/products';
+
+    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.jpg';
+    const pathname = `products/${Date.now()}${ext}`;
 
     setSubmitting(true);
     try {
-      const res = await fetch(productsUrl, {
-        method: 'POST',
+      const blob = await upload(pathname, file, {
+        access: 'public',
+        handleUploadUrl: blobUploadUrl,
         headers: {
           Authorization: `Bearer ${secret}`,
         },
-        body: fd,
+        multipart: true,
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean };
+
+      const res = await fetch(productsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim(),
+          price: Number(price),
+          category,
+          image: blob.url,
+        }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean; hint?: string };
 
       if (!res.ok) {
-        setError(data.error || `Request failed (${res.status})`);
+        setError([data.error, data.hint].filter(Boolean).join(' — ') || `Request failed (${res.status})`);
         return;
       }
 
@@ -73,11 +88,11 @@ export default function AdminPanelPage() {
       setCategory('borden');
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      setMessage('Product uploaded to Blob and saved in MongoDB.');
+      setMessage('Image uploaded to Blob and product saved in MongoDB.');
     } catch (err) {
       setError(
         err instanceof Error
-          ? `${err.message} — If local: run \`npx vercel dev\` (port 3000) and set VITE_API_ORIGIN=http://localhost:3000 in .env to avoid proxy resets on big uploads.`
+          ? `${err.message} — Local: run \`npx vercel dev\` and set VITE_API_ORIGIN=http://localhost:3000 if needed.`
           : 'Network error.'
       );
     } finally {
@@ -100,14 +115,13 @@ export default function AdminPanelPage() {
 
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Add product</h2>
         <p className="text-sm text-gray-600 mb-4">
-          FormData → POST <code className="bg-gray-100 px-1 rounded">/api/products</code> → Vercel Blob → MongoDB.
-          Set <code className="bg-gray-100 px-1 rounded">ADMIN_API_SECRET</code> and{' '}
-          <code className="bg-gray-100 px-1 rounded">VITE_ADMIN_API_SECRET</code> to the same value.
+          Large images upload <strong>directly to Vercel Blob</strong> from your browser (no 4.5 MB server limit), then we save the image URL in MongoDB. Same{' '}
+          <code className="bg-gray-100 px-1 rounded">ADMIN_API_SECRET</code> /{' '}
+          <code className="bg-gray-100 px-1 rounded">VITE_ADMIN_API_SECRET</code>.
         </p>
         <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-          <strong>Local dev:</strong> run <code className="bg-white px-1 rounded">npx vercel dev</code> (API on :3000) and add{' '}
-          <code className="bg-white px-1 rounded">VITE_API_ORIGIN=http://localhost:3000</code> to <code className="bg-white px-1 rounded">.env</code>{' '}
-          so uploads skip the Vite proxy (fixes <code className="bg-white px-1 rounded">ERR_CONNECTION_RESET</code> on large images). Restart Vite after changing .env.
+          <strong>Local dev:</strong> <code className="bg-white px-1 rounded">npx vercel dev</code> on :3000 + optional{' '}
+          <code className="bg-white px-1 rounded">VITE_API_ORIGIN=http://localhost:3000</code>. Restart Vite after .env changes.
         </p>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
