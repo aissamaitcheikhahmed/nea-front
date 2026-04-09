@@ -32,6 +32,25 @@ import WeddingPageHeader from './WeddingPageHeader';
 import type { WeddingPage } from '../wedding/types';
 
 type ShopCat = 'all' | 'borden' | 'glazen' | 'bestek' | 'bloemen' | 'linnen' | 'accessoires';
+type ShopItem = {
+  id: string;
+  cat: Exclude<ShopCat, 'all'>;
+  img: string;
+  badge?: string;
+  shopCat: string;
+  name: string;
+  desc: string;
+  price: string;
+  priceEur: number;
+};
+type ApiProduct = {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  price: number;
+  category: Exclude<ShopCat, 'all'>;
+};
 
 const STRIP = [
   { icon: CircleDot, name: 'Verlovingen' },
@@ -54,17 +73,7 @@ const COLLECTIES = [
 
 const GAL_IMGS = [ins1, ins2, ins3, ins4, car2, car3, assort1, assort2, assort3, car4, ins1, ins3];
 
-const SHOP_ITEMS: {
-  id: string;
-  cat: Exclude<ShopCat, 'all'>;
-  img: string;
-  badge?: string;
-  shopCat: string;
-  name: string;
-  desc: string;
-  price: string;
-  priceEur: number;
-}[] = [
+const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'wit-goud-diner-bord',
     cat: 'borden',
@@ -149,12 +158,26 @@ const SHOP_ITEMS: {
   },
 ];
 
+const CATEGORY_LABEL: Record<Exclude<ShopCat, 'all'>, string> = {
+  borden: 'Borden',
+  glazen: 'Glazen',
+  bestek: 'Bestek',
+  bloemen: 'Bloemen & Vazen',
+  linnen: 'Linnen',
+  accessoires: 'Accessoires',
+};
+
+function formatEuro(value: number) {
+  return new Intl.NumberFormat('nl-BE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(value);
+}
+
 export default function NeaeventsWeddingSite() {
   const location = useLocation();
   const navigate = useNavigate();
   const { addItem, toggleCart, totalItems, openCart } = useCart();
   const [page, setPage] = useState<WeddingPage>('home');
   const [shopFilter, setShopFilter] = useState<ShopCat>('all');
+  const [remoteShopItems, setRemoteShopItems] = useState<ShopItem[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const showPage = useCallback((id: WeddingPage) => {
@@ -194,6 +217,44 @@ export default function NeaeventsWeddingSite() {
     }, 100);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const apiOrigin = import.meta.env.VITE_API_ORIGIN?.trim().replace(/\/$/, '') ?? '';
+    const productsUrl = apiOrigin ? `${apiOrigin}/api/products` : '/api/products';
+    const run = async () => {
+      try {
+        const res = await fetch(productsUrl);
+        if (!res.ok) return;
+        const data = (await res.json()) as { products?: ApiProduct[] };
+        const apiProducts = Array.isArray(data.products) ? data.products : [];
+        if (!active) return;
+        const mapped = apiProducts
+          .filter((p) => p && typeof p.id === 'string' && p.name && p.description && p.image && typeof p.price === 'number')
+          .filter((p) => ['borden', 'glazen', 'bestek', 'bloemen', 'linnen', 'accessoires'].includes(p.category))
+          .map((p) => ({
+            id: `db-${p.id}`,
+            cat: p.category,
+            img: p.image,
+            badge: 'Nieuw',
+            shopCat: CATEGORY_LABEL[p.category],
+            name: p.name,
+            desc: p.description,
+            price: formatEuro(p.price),
+            priceEur: p.price,
+          }));
+        setRemoteShopItems(mapped);
+      } catch {
+        // Keep hardcoded shop available even if API fails.
+      }
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const displayedShopItems = [...remoteShopItems, ...SHOP_ITEMS];
 
   const navLink = (id: WeddingPage, label: string) => (
     <li>
@@ -507,7 +568,7 @@ export default function NeaeventsWeddingSite() {
             ))}
           </div>
           <div className="shop-grid">
-            {SHOP_ITEMS.filter((p) => shopFilter === 'all' || p.cat === shopFilter).map((p) => (
+            {displayedShopItems.filter((p) => shopFilter === 'all' || p.cat === shopFilter).map((p) => (
               <div key={p.id} className="shop-card" data-cat={p.cat}>
                 <div className="shop-img-wrap">
                   <img className="shop-img" src={p.img} alt="" />

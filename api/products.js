@@ -1,12 +1,11 @@
 /**
- * Vercel Serverless: GET /api/products | POST /api/products
+ * Vercel Serverless: GET/POST/PATCH/DELETE /api/products
  *
- * POST (JSON): { name, description, price, category, image } — image is HTTPS URL from client Blob upload.
- *   Header: Authorization: Bearer <ADMIN_API_SECRET>
- *   (Large files use /api/blob-upload + @vercel/blob/client upload() first — see AdminPanel.)
+ * POST/PATCH use JSON payloads and expect image URL from client Blob upload.
+ * Header (write ops): Authorization: Bearer <ADMIN_API_SECRET>
  */
 
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const SHOP_CATEGORY_SLUGS = [
   'borden',
@@ -57,7 +56,7 @@ function mapDoc(doc) {
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
@@ -74,6 +73,13 @@ function readBody(req) {
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+function parseId(rawId) {
+  const id = String(rawId ?? '').trim();
+  if (!id) return null;
+  if (ObjectId.isValid(id)) return new ObjectId(id);
+  return id;
 }
 
 function isAllowedImageUrl(url) {
@@ -208,7 +214,13 @@ async function handlePost(req, res) {
     return res.end(JSON.stringify({ error: 'Failed to save product', message: String(e.message) }));
   }
 
-  const saved = await coll.findOne({ _id: result.insertedId });
+  let saved = null;
+  try {
+    saved = await coll.findOne({ _id: result.insertedId });
+  } catch (e) {
+    // Insert succeeded, so return fallback product even if read-after-write fails.
+    console.error('[api/products] read-after-insert', e);
+  }
   res.statusCode = 201;
   return res.end(
     JSON.stringify({
@@ -216,6 +228,155 @@ async function handlePost(req, res) {
       product: saved ? mapDoc(saved) : mapDoc({ ...doc, _id: result.insertedId }),
     })
   );
+}
+
+async function handlePatch(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+
+  const secret = process.env.ADMIN_API_SECRET;
+  const auth = req.headers.authorization;
+  if (!secret || auth !== `Bearer ${secret}`) {
+    return unauthorized(res);
+  }
+
+  const mongoClient = await getMongoClient();
+  if (!mongoClient) {
+    res.statusCode = 500;
+    return res.end(JSON.stringify({ error: 'MONGODB_URI is not set' }));
+  }
+
+  let data;
+  try {
+    const raw = await readBody(req);
+    data = JSON.parse(raw);
+  } catch (e) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: 'Invalid JSON body', message: String(e.message) }));
+  }
+
+  const filterId = parseId(data.id);
+  if (!filterId) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: 'Missing or invalid id' }));
+  }
+
+  const update = {};
+  if (typeof data.name === 'string') {
+    const v = data.name.trim();
+    if (!v) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'name cannot be empty' }));
+    }
+    update.name = v;
+  }
+  if (typeof data.description === 'string') {
+    const v = data.description.trim();
+    if (!v) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'description cannot be empty' }));
+    }
+    update.description = v;
+  }
+  if (data.price !== undefined) {
+    const v = Number(data.price);
+    if (!Number.isFinite(v) || v < 0) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'Invalid price' }));
+    }
+    update.price = v;
+  }
+  if (typeof data.category === 'string') {
+    const v = data.category.trim();
+    if (!SHOP_CATEGORY_SLUGS.includes(v)) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'Invalid category', allowed: SHOP_CATEGORY_SLUGS }));
+    }
+    update.category = v;
+  }
+  if (typeof data.image === 'string') {
+    const v = data.image.trim();
+    if (!isAllowedImageUrl(v)) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'Invalid image URL' }));
+    }
+    update.image = v;
+  }
+
+  if (Object.keys(update).length === 0) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: 'No fields to update' }));
+  }
+
+  update.updatedAt = new Date();
+
+  const dbName = process.env.MONGODB_DB || 'neaevents';
+  const collectionName = process.env.MONGODB_PRODUCTS_COLLECTION || 'products';
+  const coll = mongoClient.db(dbName).collection(collectionName);
+
+  try {
+    const result = await coll.updateOne({ _id: filterId }, { $set: update });
+    if (result.matchedCount === 0) {
+      res.statusCode = 404;
+      return res.end(JSON.stringify({ error: 'Product not found' }));
+    }
+    const saved = await coll.findOne({ _id: filterId });
+    return res.end(JSON.stringify({ ok: true, product: saved ? mapDoc(saved) : null }));
+  } catch (e) {
+    console.error('[api/products] update', e);
+    res.statusCode = 500;
+    return res.end(JSON.stringify({ error: 'Failed to update product', message: String(e.message) }));
+  }
+}
+
+async function handleDelete(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+
+  const secret = process.env.ADMIN_API_SECRET;
+  const auth = req.headers.authorization;
+  if (!secret || auth !== `Bearer ${secret}`) {
+    return unauthorized(res);
+  }
+
+  const mongoClient = await getMongoClient();
+  if (!mongoClient) {
+    res.statusCode = 500;
+    return res.end(JSON.stringify({ error: 'MONGODB_URI is not set' }));
+  }
+
+  const url = new URL(req.url || '/', 'http://local');
+  let filterId = parseId(url.searchParams.get('id'));
+
+  if (!filterId) {
+    try {
+      const raw = await readBody(req);
+      const body = raw ? JSON.parse(raw) : {};
+      filterId = parseId(body.id);
+    } catch {
+      // ignore body parse here; query param remains primary
+    }
+  }
+
+  if (!filterId) {
+    res.statusCode = 400;
+    return res.end(JSON.stringify({ error: 'Missing or invalid id' }));
+  }
+
+  const dbName = process.env.MONGODB_DB || 'neaevents';
+  const collectionName = process.env.MONGODB_PRODUCTS_COLLECTION || 'products';
+  const coll = mongoClient.db(dbName).collection(collectionName);
+
+  try {
+    const result = await coll.deleteOne({ _id: filterId });
+    if (result.deletedCount === 0) {
+      res.statusCode = 404;
+      return res.end(JSON.stringify({ error: 'Product not found' }));
+    }
+    return res.end(JSON.stringify({ ok: true }));
+  } catch (e) {
+    console.error('[api/products] delete', e);
+    res.statusCode = 500;
+    return res.end(JSON.stringify({ error: 'Failed to delete product', message: String(e.message) }));
+  }
 }
 
 export default async function handler(req, res) {
@@ -232,6 +393,12 @@ export default async function handler(req, res) {
     }
     if (req.method === 'POST') {
       return await handlePost(req, res);
+    }
+    if (req.method === 'PATCH') {
+      return await handlePatch(req, res);
+    }
+    if (req.method === 'DELETE') {
+      return await handleDelete(req, res);
     }
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json');
